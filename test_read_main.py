@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import ericreader as plotter
 from matplotlib import pyplot as plt
 
