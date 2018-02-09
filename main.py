@@ -7,48 +7,108 @@
 import pyb
 import micropython
 import gc
-import utime
-import time
 
 import cotask
-from task_share import Queue
+import task_share
 import print_task
 import busy_task
-import machine
-import os
+
+
+import time
+import utime
+import motor_Ng_Kropp_Fitter as driver
+import controller_Ng_Kropp_Fitter as controller
+import encoder_Ng_Kropp_Fitter as encode
+
 
 # Allocate memory so that exceptions raised in interrupt service routines can
 # generate useful diagnostic printouts
 micropython.alloc_emergency_exception_buf (100)
 
-data = Queue('I', 800)
-adc = None
+location = 3000
+end = 100
 
-def interrupt(timer):
-    '''
-    This is the ISR that is run when the timer runs out
-    It won't overflow data. Instead it will stop putting values in the Queue
-    '''
-    global data, adc
-    if adc is not None and not data.full():
-        data.put(adc.read())
+GOING = const (0)
+STOPPED = const (1)
+
+def notice_me_senpai():
+    ## cereal.open()
+    ## cereal.command('k')
+    print('eric is alive')
+    enc.zero()
+    ctr.set_setpoint(location)
+    for i in range(0,end):
+        ctr.err_calc(enc.read())
+        actuation = ctr.do_work()
+        drv.set_duty_cycle(actuation)
+        utime.sleep_ms(10)
+
+    
+
+# =============================================================================
 
 if __name__ == "__main__":
-    pinC0 = pyb.Pin(pyb.Pin.board.PC0, pyb.Pin.IN) # Setting pin A5 as input to the ADC
-    pinC1 = pyb.Pin(pyb.Pin.board.PC1, pyb.Pin.OUT_PP) # Setting pin A4 as output 
-    adc = pyb.ADC(pinC0)
 
-    pinC1.low()
-    tim1 = pyb.Timer(1, freq=1000, callback=interrupt) #Setting Timer to 1kHz
-    pinC1.high()
+    print ('\033[2JTesting scheduler in cotask.py\n')
+    drv = driver.MotorDriver()
+    enc = encode.MotorEncoder()
+    ctr = controller.MotorController(.04, 7000)   ##Initializes controller with gain=1 and location = 50
+    #open cereal port
+    ##cereal = cereal.cereal()
+    
+    
+    
+    # Create a share and some queues to test diagnostic printouts
+    share0 = task_share.Share ('i', thread_protect = False, name = "Share_0")
+    q0 = task_share.Queue ('B', 6, thread_protect = False, overwrite = False,
+                           name = "Queue_0")
+    q1 = task_share.Queue ('B', 8, thread_protect = False, overwrite = False,
+                           name = "Queue_1")
 
-    while True: # Run until data is full
-        if data.full():
-            break
+    # Create the tasks. If trace is enabled for any task, memory will be
+    # allocated for state transition tracing, and the application will run out
+    # of memory after a while and quit. Therefore, use tracing only for 
+    # debugging and set trace to False when it's not needed
 
-    tim1.callback(None) # prevent calling back
+    task = cotask.Task(notice_me_senpai, name = 'Notice_Me', priority = 1,
+                        period = 1000, profile = True, trace = False)
 
-    while not data.empty():
-        print(data.get()*0.000805) #Convert values to voltage
-    pinC1.low()
+    '''
+    task1 = cotask.Task (task1_fun, name = 'Task_1', priority = 1, 
+                         period = 1000, profile = True, trace = False)
+    task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
+                         period = 100, profile = True, trace = False)
+    cotask.task_list.append (task1)
+    cotask.task_list.append (task2)
+    '''
+    # A task which prints characters from a queue has automatically been
+    # created in print_task.py; it is accessed by print_task.put_bytes()
+
+    # Create a bunch of silly time-wasting busy tasks to test how well the
+    # scheduler works when it has a lot to do
+    '''
+    for tnum in range (10):
+        newb = busy_task.BusyTask ()
+        bname = 'Busy_' + str (newb.ser_num)
+        cotask.task_list.append (cotask.Task (newb.run_fun, name = bname, 
+            priority = 0, period = 400 + 30 * tnum, profile = True))
+    '''
+    # Run the memory garbage collector to ensure memory is as defragmented as
+    # possible before the real-time scheduler is started
+    gc.collect ()
+
+    # Run the scheduler with the chosen scheduling algorithm. Quit if any 
+    # character is sent through the serial por
+    vcp = pyb.USB_VCP ()
+    while not vcp.any ():
+        cotask.task_list.pri_sched ()
+
+    # Empty the comm port buffer of the character(s) just pressed
+    vcp.read ()
+
+    # Print a table of task data and a table of shared information data
+    print ('\n' + str (cotask.task_list) + '\n')
+    print (task_share.show_all ())
+    print (task1.get_trace ())
+    print ('\r\n')
 
