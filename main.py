@@ -34,15 +34,25 @@ STOPPED = const (1)
 def notice_me_senpai():
     ## cereal.open()
     ## cereal.command('k')
-    print('eric is alive')
-    enc.zero()
-    ctr.set_setpoint(location)
-    for i in range(0,end):
-        ctr.err_calc(enc.read())
+    if(state==0):    ## Idle, Wait for Keyboard input
+        enc.zero()
+        state=1
+    else if(state==1):  ## Run the control algortithm
+        error = ctr.err_calc(enc.read())
         actuation = ctr.do_work()
         drv.set_duty_cycle(actuation)
-        utime.sleep_ms(10)
+        if(error<50)
+            state=2
+    else if(state==2):  ## Open serial port and read data written
+        
+    else:
+        drv.set_duty_cycle(0)
 
+    error = ctr.err_calc(enc.read())
+    actuation = ctr.do_work()
+    drv.set_duty_cycle(actuation)
+    if(error < 50)
+        
     
 
 # =============================================================================
