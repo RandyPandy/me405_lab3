@@ -13,61 +13,104 @@ import task_share
 import print_task
 import busy_task
 
-
 import time
 import utime
 import motor_Ng_Kropp_Fitter as driver
 import controller_Ng_Kropp_Fitter as controller
 import encoder_Ng_Kropp_Fitter as encode
 
-
 # Allocate memory so that exceptions raised in interrupt service routines can
 # generate useful diagnostic printouts
 micropython.alloc_emergency_exception_buf (100)
 
-location = 3000
-end = 100
 
 GOING = const (0)
 STOPPED = const (1)
 
-def notice_me_senpai():
-    ## cereal.open()
-    ## cereal.command('k')
-    if(state==0):    ## Idle, Wait for Keyboard input
-        enc.zero()
-        state=1
-    else if(state==1):  ## Run the control algortithm
-        error = ctr.err_calc(enc.read())
-        actuation = ctr.do_work()
-        drv.set_duty_cycle(actuation)
-        if(error<50)
-            state=2
-    else if(state==2):  ## Open serial port and read data written
-        
-    else:
-        drv.set_duty_cycle(0)
+def task1_fun ():
+    ''' Function which runs for Task 1, which toggles twice every second in a
+    way which is only slightly silly.  '''
+    global drv, enc, ctr
 
-    error = ctr.err_calc(enc.read())
-    actuation = ctr.do_work()
-    drv.set_duty_cycle(actuation)
-    if(error < 50)
-        
-    
+    state = STOPPED
+    counter = 0
+
+    while True:
+        if state == GOING:
+            error = ctr.err_calc(enc.read())
+            actuation = ctr.do_work()
+            drv.set_duty_cycle(actuation)
+            print_task.put('{}\n'.format(error))
+            if abs(error)<100:
+                drv.set_duty_cycle(0)
+                state = STOPPED
+            #print_task.put ('GOING\n')
+
+        elif state == STOPPED:
+            enc.zero()
+            ctr.set_setpoint(2750)
+            #print_task.put ('STOPPED\n')
+            state = GOING
+
+        else:
+            raise ValueError ('Illegal state for task 1')
+
+        # Periodically check and/or clean up memory
+        counter += 1
+        if counter >= 60:
+            counter = 0
+            print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
+
+        yield (state)
+
+
+def task2_fun ():
+    ''' Function that implements task 2, a task which is somewhat sillier
+    than task 1. '''
+    global drv, enc, ctr
+
+    state = STOPPED
+    counter = 0
+
+    while True:
+        if state == GOING:
+            error = ctr.err_calc(enc.read())
+            actuation = ctr.do_work()
+            drv.set_duty_cycle(actuation)
+            print_task.put('{}\n'.format(error))
+            if abs(error)<100:
+                drv.set_duty_cycle(0)
+                state = STOPPED
+            #print_task.put ('GOING\n')
+
+        elif state == STOPPED:
+            enc.zero()
+            ctr.set_setpoint(2750)
+            #print_task.put ('STOPPED\n')
+            state = GOING
+
+        else:
+            raise ValueError ('Illegal state for task 1')
+
+        # Periodically check and/or clean up memory
+        counter += 1
+        if counter >= 60:
+            counter = 0
+            print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
+
+        yield (state)
+
 
 # =============================================================================
 
 if __name__ == "__main__":
 
-    print ('\033[2JTesting scheduler in cotask.py\n')
     drv = driver.MotorDriver()
     enc = encode.MotorEncoder()
-    ctr = controller.MotorController(.04, 7000)   ##Initializes controller with gain=1 and location = 50
-    #open cereal port
-    ##cereal = cereal.cereal()
-    
-    
-    
+    ctr = controller.MotorController(.035, 2750)  
+
+    print ('\033[2JTesting scheduler in cotask.py\n')
+
     # Create a share and some queues to test diagnostic printouts
     share0 = task_share.Share ('i', thread_protect = False, name = "Share_0")
     q0 = task_share.Queue ('B', 6, thread_protect = False, overwrite = False,
@@ -79,18 +122,13 @@ if __name__ == "__main__":
     # allocated for state transition tracing, and the application will run out
     # of memory after a while and quit. Therefore, use tracing only for 
     # debugging and set trace to False when it's not needed
-
-    task = cotask.Task(notice_me_senpai, name = 'Notice_Me', priority = 1,
-                        period = 1000, profile = True, trace = False)
-
-    '''
     task1 = cotask.Task (task1_fun, name = 'Task_1', priority = 1, 
-                         period = 1000, profile = True, trace = False)
+                         period = 30, profile = True, trace = False)
     task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
-                         period = 100, profile = True, trace = False)
+                         period = 30, profile = True, trace = False)
     cotask.task_list.append (task1)
-    cotask.task_list.append (task2)
-    '''
+    #cotask.task_list.append (task2)
+
     # A task which prints characters from a queue has automatically been
     # created in print_task.py; it is accessed by print_task.put_bytes()
 
