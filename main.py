@@ -35,17 +35,16 @@ def task1_fun ():
     counter = 0
 
     while True:
-        if state == GOING:
+        if state == GOING:    ## State 1, Perform 1 iteration of the closed motor control loop
             error = ctr.err_calc(enc.read())
             actuation = ctr.do_work()
             drv.set_duty_cycle(actuation)
-            ##print_task.put('{}\n'.format(error))
             if abs(error)<150:
                 drv.set_duty_cycle(0)
                 state = STOPPED
             #print_task.put ('GOING\n')
 
-        elif state == STOPPED:
+        elif state == STOPPED:    ## State 2, Reset encoder and restart the control loop
             enc.zero()
             ctr.set_setpoint(2750)
             #print_task.put ('STOPPED\n')
@@ -54,18 +53,11 @@ def task1_fun ():
         else:
             raise ValueError ('Illegal state for task 1')
 
-        # Periodically check and/or clean up memory
-        '''counter += 1
-        if counter >= 60:
-            counter = 0
-            print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
-        '''
         yield (state)
 
 
 def task2_fun ():
-    ''' Function that implements task 2, a task which is somewhat sillier
-    than task 1. '''
+    ''' Sets up the second controller, motor, and encoder'''
     global drv2, enc2, ctr2
 
     state = STOPPED
@@ -76,27 +68,18 @@ def task2_fun ():
             error = ctr2.err_calc(enc2.read())
             actuation = ctr2.do_work()
             drv2.set_duty_cycle(actuation)
-            ##print_task.put('{}\n'.format(error2))
             if abs(error)<150:
                 drv2.set_duty_cycle(0)
                 state = STOPPED
-            #print_task.put ('GOING\n')
 
         elif state == STOPPED:
             enc2.zero()
             ctr2.set_setpoint(2750)
-            #print_task.put ('STOPPED\n')
             state = GOING
 
         else:
-            raise ValueError ('Illegal state for task 1')
+            raise ValueError ('Illegal state for task 2')
 
-        # Periodically check and/or clean up memory
-        '''counter += 1
-        if counter >= 60:
-            counter = 0
-           ##print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
-        '''
         yield (state)
 
 
@@ -104,13 +87,15 @@ def task2_fun ():
 
 if __name__ == "__main__":
 
-    drv = driver.MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5,3,1,2) #motor enable, pin 1, pin 2
-    enc = encode.MotorEncoder(pyb.Pin.board.PB6, pyb.Pin.board.PB7,4,1,2)
-    ctr = controller.MotorController(.035, 2750)  
+    drv = driver.MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5,3,1,2) ## Motor enable PA10, Motor Controls on PB4 and PB5, PWM on timer 3 ch1 and ch2
+    enc = encode.MotorEncoder(pyb.Pin.board.PB6, pyb.Pin.board.PB7,4,1,2) ## Enc_a PB6, Enc_b PB7, Encoder on timer 4, ch1 and ch2
+    ctr = controller.MotorController(.035, 2750) ## Controller with gain = 0.035, location = 2750
 
-    drv2 = driver.MotorDriver(pyb.Pin.board.PC1, pyb.Pin.board.PA0, pyb.Pin.board.PA1, 5, 1, 2) #motor enable, pin 1, pin 2
-    enc2 = encode.MotorEncoder(pyb.Pin.board.PC6, pyb.Pin.board.PC7,8,1,2) #encoder a, encoder b
-    ctr2 = controller.MotorController(0.035, 2750)
+    drv2 = driver.MotorDriver(pyb.Pin.board.PC1, pyb.Pin.board.PA0, pyb.Pin.board.PA1, 5, 1, 2) ## Motor enable PC1, Motor Controls on PC6 and PC7, PWM on timer 5 ch1 and ch2
+    enc2 = encode.MotorEncoder(pyb.Pin.board.PC6, pyb.Pin.board.PC7,8,1,2) ## Enc_a PC6, Enc_b PC7, Encoder on timer 8, ch1 and ch2
+
+    ctr2 = controller.MotorController(0.035, 2750) ## Controller with gain = 0.035, location = 2750
+
 
     print ('\033[2JTesting scheduler in cotask.py\n')
 
