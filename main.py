@@ -28,8 +28,7 @@ GOING = const (0)
 STOPPED = const (1)
 
 def task1_fun ():
-    ''' Function which runs for Task 1, which toggles twice every second in a
-    way which is only slightly silly.  '''
+    ''' Sets up the first controller, motor, and encoder'''
     global drv, enc, ctr
 
     state = STOPPED
@@ -40,8 +39,8 @@ def task1_fun ():
             error = ctr.err_calc(enc.read())
             actuation = ctr.do_work()
             drv.set_duty_cycle(actuation)
-            print_task.put('{}\n'.format(error))
-            if abs(error)<100:
+            ##print_task.put('{}\n'.format(error))
+            if abs(error)<150:
                 drv.set_duty_cycle(0)
                 state = STOPPED
             #print_task.put ('GOING\n')
@@ -56,36 +55,36 @@ def task1_fun ():
             raise ValueError ('Illegal state for task 1')
 
         # Periodically check and/or clean up memory
-        counter += 1
+        '''counter += 1
         if counter >= 60:
             counter = 0
             print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
-
+        '''
         yield (state)
 
 
 def task2_fun ():
     ''' Function that implements task 2, a task which is somewhat sillier
     than task 1. '''
-    global drv, enc, ctr
+    global drv2, enc2, ctr2
 
     state = STOPPED
     counter = 0
 
     while True:
         if state == GOING:
-            error = ctr.err_calc(enc.read())
-            actuation = ctr.do_work()
-            drv.set_duty_cycle(actuation)
-            print_task.put('{}\n'.format(error))
-            if abs(error)<100:
-                drv.set_duty_cycle(0)
+            error = ctr2.err_calc(enc2.read())
+            actuation = ctr2.do_work()
+            drv2.set_duty_cycle(actuation)
+            ##print_task.put('{}\n'.format(error2))
+            if abs(error)<150:
+                drv2.set_duty_cycle(0)
                 state = STOPPED
             #print_task.put ('GOING\n')
 
         elif state == STOPPED:
-            enc.zero()
-            ctr.set_setpoint(2750)
+            enc2.zero()
+            ctr2.set_setpoint(2750)
             #print_task.put ('STOPPED\n')
             state = GOING
 
@@ -93,11 +92,11 @@ def task2_fun ():
             raise ValueError ('Illegal state for task 1')
 
         # Periodically check and/or clean up memory
-        counter += 1
+        '''counter += 1
         if counter >= 60:
             counter = 0
-            print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
-
+           ##print_task.put (' Memory: {:d}\n'.format (gc.mem_free ()))
+        '''
         yield (state)
 
 
@@ -105,9 +104,13 @@ def task2_fun ():
 
 if __name__ == "__main__":
 
-    drv = driver.MotorDriver()
-    enc = encode.MotorEncoder()
+    drv = driver.MotorDriver(pyb.Pin.board.PA10, pyb.Pin.board.PB4, pyb.Pin.board.PB5,3,1,2) #motor enable, pin 1, pin 2
+    enc = encode.MotorEncoder(pyb.Pin.board.PB6, pyb.Pin.board.PB7,4,1,2)
     ctr = controller.MotorController(.035, 2750)  
+
+    drv2 = driver.MotorDriver(pyb.Pin.board.PC1, pyb.Pin.board.PA0, pyb.Pin.board.PA1, 5, 1, 2) #motor enable, pin 1, pin 2
+    enc2 = encode.MotorEncoder(pyb.Pin.board.PC6, pyb.Pin.board.PC7,8,1,2) #encoder a, encoder b
+    ctr2 = controller.MotorController(0.035, 2750)
 
     print ('\033[2JTesting scheduler in cotask.py\n')
 
@@ -123,11 +126,11 @@ if __name__ == "__main__":
     # of memory after a while and quit. Therefore, use tracing only for 
     # debugging and set trace to False when it's not needed
     task1 = cotask.Task (task1_fun, name = 'Task_1', priority = 1, 
-                         period = 30, profile = True, trace = False)
+                         period = 25, profile = True, trace = False)
     task2 = cotask.Task (task2_fun, name = 'Task_2', priority = 2, 
-                         period = 30, profile = True, trace = False)
+                         period = 25, profile = True, trace = False)
     cotask.task_list.append (task1)
-    #cotask.task_list.append (task2)
+    cotask.task_list.append (task2)
 
     # A task which prints characters from a queue has automatically been
     # created in print_task.py; it is accessed by print_task.put_bytes()

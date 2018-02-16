@@ -7,19 +7,20 @@ __date__= "January 18, 2018"
 
 class MotorEncoder:
     ''' Motor Encoder Class: Has a function to read and reset motor position counter '''
-    def __init__(self):
+    def __init__(self, pin_a, pin_b, timer, channel_1, channel_2):
         '''Creates a motor encoder by initializing GPIO pins and setting position to zero'''
+        '''enc_a is PB6, enc_b is PB7'''
         ## initialize pinB6 to input and alternate function to timer 4 channel 1
-        self.pinB6 = pyb.Pin(pyb.Pin.board.PB6, pyb.Pin.IN, pull=pyb.Pin.PULL_NONE, af=2) 
+        self.enc_a = pyb.Pin(pin_a, pyb.Pin.IN, pull=pyb.Pin.PULL_NONE, af=2) 
         ## initialize pinB7 to input and alternate function to timer 4 channel 2
-        self.pinB7 = pyb.Pin(pyb.Pin.board.PB7, pyb.Pin.IN, pull=pyb.Pin.PULL_NONE, af=2) 
+        self.enc_b = pyb.Pin(pin_b, pyb.Pin.IN, pull=pyb.Pin.PULL_NONE, af=2) 
  
         ## setting timer to 4 with max period
-        self.timEncoder = pyb.Timer(4, prescaler=0, period=0xffff)         
+        self.timEncoder = pyb.Timer(timer, prescaler=0, period=0xffff)         
         ## assigns channel 1 to pin B6
-        ch1 = self.timEncoder.channel(1, pyb.Timer.ENC_AB, pin=self.pinB6) 
+        ch1 = self.timEncoder.channel(channel_1, pyb.Timer.ENC_AB, pin=self.enc_a) 
         ## assigns channel 2 to pin B7
-        ch2 = self.timEncoder.channel(2, pyb.Timer.ENC_AB, pin=self.pinB7)
+        ch2 = self.timEncoder.channel(channel_2, pyb.Timer.ENC_AB, pin=self.enc_b)
 
         #initialize counter, delta, and position 
         self.current_count = self.timEncoder.counter()

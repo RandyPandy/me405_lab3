@@ -50,7 +50,7 @@ class MotorController:
         if abs(self.error) < 50:
             self.actuation_signal = 0
         
-        self.write_data()
+       # self.write_data()
         return self.actuation_signal
 
     def write_data(self):
